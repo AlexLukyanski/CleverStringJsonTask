@@ -2,7 +2,8 @@ package by.clever.stringtask.service;
 
 public interface JsonOperator {
 
-    String toJson(Object object);
-    Object fromJson(String string);
+    <T> String toJson(T t);
+
+    Object fromJson(String string, Class<?> type);
 
 }
