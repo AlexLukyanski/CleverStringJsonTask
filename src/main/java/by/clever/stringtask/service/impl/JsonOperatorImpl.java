@@ -3,6 +3,7 @@ package by.clever.stringtask.service.impl;
 import by.clever.stringtask.exception.JsonParserException;
 import by.clever.stringtask.service.DateTimeConverter;
 import by.clever.stringtask.service.JsonOperator;
+import by.clever.stringtask.service.constant.FieldType;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -84,35 +85,35 @@ public class JsonOperatorImpl implements JsonOperator {
         Object[] values = new Object[valuesStrings.length];
 
         for (int i = 0; i < valuesStrings.length; i++) {
-            if ("java.util.UUID".equals(types[i].getTypeName())) {
+            if (FieldType.UUID.equals(types[i].getTypeName())) {
                 String id = clearString(valuesStrings[i].toString());
                 if ("null".equals(id)) {
                     values[i] = null;
                 } else {
                     values[i] = UUID.fromString(id);
                 }
-            } else if ("java.time.LocalDate".equals(types[i].getTypeName())) {
+            } else if (FieldType.LOCAL_DATE.equals(types[i].getTypeName())) {
                 String date = clearString(valuesStrings[i].toString());
                 if ("null".equals(date)) {
                     values[i] = null;
                 } else {
                     values[i] = LocalDate.parse(date);
                 }
-            } else if ("java.lang.Double".equals(types[i].getTypeName())) {
+            } else if (FieldType.DOUBLE.equals(types[i].getTypeName())) {
                 String number = clearString(valuesStrings[i].toString());
                 if ("null".equals(number)) {
                     values[i] = null;
                 } else {
                     values[i] = Double.valueOf(number);
                 }
-            } else if ("int".equals(types[i].getTypeName())) {
+            } else if (FieldType.INT_PRIMITIVE.equals(types[i].getTypeName())) {
                 String number = clearString(valuesStrings[i].toString());
                 if ("null".equals(number)) {
                     values[i] = null;
                 } else {
                     values[i] = Integer.valueOf(number);
                 }
-            } else if ("java.time.OffsetDateTime".equals(types[i].getTypeName())) {
+            } else if (FieldType.OFFSET_DATE_TIME.equals(types[i].getTypeName())) {
                 String temporalValue = clearString(valuesStrings[i].toString());
                 if ("null".equals(temporalValue)) {
                     values[i] = null;
@@ -120,8 +121,8 @@ public class JsonOperatorImpl implements JsonOperator {
                     String convertedTemporalValue = dateTimeConverter.convertFromJson(temporalValue);
                     values[i] = OffsetDateTime.parse(convertedTemporalValue);
                 }
-            } else if (types[i].getTypeName().contains("List")
-                    || types[i].getTypeName().contains("Set")) {
+            } else if (types[i].getTypeName().contains(FieldType.LIST)
+                    || types[i].getTypeName().contains(FieldType.SET)) {
                 String value = clearString(valuesStrings[i].toString());
                 if ("null".equals(value)) {
                     values[i] = null;
@@ -181,8 +182,9 @@ public class JsonOperatorImpl implements JsonOperator {
                 keyBuilder = new StringBuilder();
                 isKey = false;
             }
-            if (",".equals(String.valueOf(chars[i]))
-                    || "}".equals(String.valueOf(chars[i]))) {
+            if ((",".equals(String.valueOf(chars[i]))
+                    && !"]".equals(String.valueOf(chars[i - 1]))
+                    || "}".equals(String.valueOf(chars[i])))) {
                 isKey = true;
 
                 values.add(clearifyAndReturnString(valueBuilder));
@@ -206,6 +208,7 @@ public class JsonOperatorImpl implements JsonOperator {
                 isKey = true;
             }
         }
+
     }
 
     private int parseArray(String string, int j, List<Map<String, Object>> result) {
@@ -213,6 +216,7 @@ public class JsonOperatorImpl implements JsonOperator {
         char[] chars = string.toCharArray();
 
         Map<String, Object> fieldsMap = new LinkedHashMap<>();
+        List<List<Map<String, Object>>> inner = new ArrayList<>();
 
         boolean isKey = true;
 
@@ -231,8 +235,9 @@ public class JsonOperatorImpl implements JsonOperator {
             if (":".equals(String.valueOf(chars[i]))) {
                 isKey = false;
             }
-            if (",".equals(String.valueOf(chars[i]))
-                    || "}".equals(String.valueOf(chars[i]))) {
+            if ((",".equals(String.valueOf(chars[i]))
+                    && !"]".equals(String.valueOf(chars[i - 1]))
+                    || "}".equals(String.valueOf(chars[i])))) {
                 isKey = true;
                 key = clearifyAndReturnString(keyBuilder);
 
@@ -259,9 +264,12 @@ public class JsonOperatorImpl implements JsonOperator {
                 List<Map<String, Object>> result2 = new ArrayList<>();
                 int index = parseArray(string, i + 1, result2);
                 i = index - 1;
+                isKey = true;
+                inner.add(result2);
             }
 
             if ("]".equals(String.valueOf(chars[i]))) {
+                fieldsMap.put(key, inner);
                 break;
             }
         }
@@ -379,6 +387,7 @@ public class JsonOperatorImpl implements JsonOperator {
         }
 
         jsonString.append("]")
+                .append(",")
                 .append("\n");
     }
 }
